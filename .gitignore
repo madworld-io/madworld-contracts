@@ -9,7 +9,4 @@ cache
 artifacts
 dist
 build
-analysis
-coverage
-coverage.json
 .DS_Store
