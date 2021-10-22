@@ -5,7 +5,6 @@
   "scripts": {
     "truffle:console": "truffle develop",
     "truffle:compile": "scripts/compile.sh",
-    "truffle:test": "npm run truffle:compile && scripts/test.sh",
     "hardhat:console": "hardhat console",
     "hardhat:compile": "hardhat compile",
     "hardhat:test": "hardhat test",

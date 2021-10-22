@@ -17,9 +17,9 @@ const UMAD = artifacts.require('UMAD');
 contract('UMAD', function ([owner, other, thirdParty]) {
   const _name = 'UMAD';
   const _symbol = 'UMAD';
-  const _decimals = new BN(0);
-  const _cap = new BN(10000000000);
-  const _initialSupply = new BN(100000000);
+  const _decimals = new BN(8);
+  const _cap = new BN(10000000000).mul(new BN(10).pow(_decimals));
+  const _initialSupply = new BN(88888).mul(new BN(10).pow(_decimals));
 
 
   context('creating valid token', function () {

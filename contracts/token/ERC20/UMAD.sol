@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20Capped.sol";
 
 import "erc-payable-token/contracts/token/ERC1363/ERC1363.sol";
-
 import "eth-token-recover/contracts/TokenRecover.sol";
 
 import "./behaviours/ERC20Mintable.sol";
@@ -18,10 +17,10 @@ import "../../access/Roles.sol";
  */
 contract UMAD is ERC20Capped, ERC20Mintable, ERC20Burnable, ERC1363, TokenRecover, Roles {
 
-    string private NAME = "UMAD";
-    string private SYMBOL = "UMAD";
-    uint8 private DECIMALS = 0;
-    uint256 private CAP = 10000000000;
+    string  private NAME = "UMAD";
+    string  private SYMBOL = "UMAD";
+    uint8   private DECIMALS = 8;
+    uint256 private CAP = 10000000000 * 1E8;
 
     constructor (
         address[] memory holders,
