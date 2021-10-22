@@ -1,0 +1,62 @@
+{
+  "name": "@madworld-io/madworld-contracts",
+  "version": "1.0.0",
+  "description": "MADworld Solidity Contracts",
+  "scripts": {
+    "truffle:console": "truffle develop",
+    "truffle:compile": "scripts/compile.sh",
+    "truffle:test": "npm run truffle:compile && scripts/test.sh",
+    "hardhat:console": "hardhat console",
+    "hardhat:compile": "hardhat compile",
+    "hardhat:test": "hardhat test",
+    "hardhat:coverage": "hardhat coverage --network coverage",
+    "npm-test": "echo $npm_package_config_path",
+    "prettier:solidity": "prettier --write contracts/**/*.sol",
+    "prettier:js": "prettier --write src migrations test",
+    "prettier": "run-s prettier:js prettier:solidity",
+    "flat": "scripts/flat.sh",
+    "analyze": "scripts/analyze.sh",
+    "coverage": "scripts/coverage.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:madworld-io/madworld-contracts.git"
+  },
+  "keywords": [
+    "solidity",
+    "ethereum"
+  ],
+  "author": "MADworld",
+  "license": "MIT",
+  "dependencies": {
+    "@openzeppelin/contracts": "^3.4.2",
+    "@openzeppelin/test-helpers": "^0.5.15",
+    "erc-payable-token": "^3.4.0",
+    "eth-token-recover": "^3.4.0"
+  },
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.2",
+    "@nomiclabs/hardhat-etherscan": "^2.1.6",
+    "@nomiclabs/hardhat-truffle5": "^2.0.2",
+    "@nomiclabs/hardhat-waffle": "^2.0.1",
+    "@nomiclabs/hardhat-web3": "^2.0.0",
+    "@openzeppelin/test-environment": "^0.1.9",
+    "chai": "^4.3.4",
+    "dotenv": "^10.0.0",
+    "eslint": "^7.32.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-config-standard": "^16.0.3",
+    "eslint-plugin-import": "^2.25.2",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-prettier": "^3.4.1",
+    "eslint-plugin-promise": "^5.1.1",
+    "ethereum-waffle": "^3.4.0",
+    "ethers": "^5.5.1",
+    "hardhat": "^2.6.6",
+    "hardhat-gas-reporter": "^1.0.4",
+    "prettier": "^2.4.1",
+    "prettier-plugin-solidity": "^1.0.0-beta.18",
+    "solhint": "^3.3.6",
+    "solidity-coverage": "^0.7.17"
+  }
+}
