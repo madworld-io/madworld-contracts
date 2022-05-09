@@ -1,16 +1,22 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 import "./extensions/Signature.sol";
 import "./interfaces/IERC20.sol";
 import "./libs/Address.sol";
 import "./libs/SafeERC20.sol";
 
-contract NftStaking is IERC721Receiver, AccessControlUpgradeable, Signature {
+contract NftStaking is
+    IERC721Receiver,
+    AccessControlUpgradeable,
+    Signature,
+    ReentrancyGuardUpgradeable
+{
     using SafeERC20 for IERC20;
 
     bytes32 public constant ADMIN = keccak256("ADMIN");
@@ -56,7 +62,11 @@ contract NftStaking is IERC721Receiver, AccessControlUpgradeable, Signature {
 
     event AddedPool(uint256 poolId, string name);
 
-    event UpdatedPool(uint256 poolId, string name, uint256 totalPoolSize);
+    event UpdatedPool(uint256 poolId, string name);
+
+    event SetSigner(address signer);
+
+    event SetApyStruct(ApyStruct[] apyStruct);
 
     event Staked(
         address userAddress,
@@ -81,7 +91,7 @@ contract NftStaking is IERC721Receiver, AccessControlUpgradeable, Signature {
     );
 
     modifier updateState(uint256 _poolId, address _userAddress) {
-        updateUser(_poolId, _userAddress);
+        _updateUser(_poolId, _userAddress);
         _;
     }
 
@@ -94,7 +104,7 @@ contract NftStaking is IERC721Receiver, AccessControlUpgradeable, Signature {
         _;
     }
 
-    function __Madworld_init() public initializer {
+    function __Madworld_init() external initializer {
         __AccessControl_init();
 
         _setRoleAdmin(ADMIN, ADMIN);
@@ -102,7 +112,7 @@ contract NftStaking is IERC721Receiver, AccessControlUpgradeable, Signature {
     }
 
     function getUserCardsStaked(uint256 _poolId, address _userAddress)
-        public
+        external
         view
         validatePoolById(_poolId)
         returns (uint256[] memory, uint256[] memory)
@@ -168,20 +178,25 @@ contract NftStaking is IERC721Receiver, AccessControlUpgradeable, Signature {
 
     function updateUsers(uint256 _poolId, address[] calldata _userAddresses)
         external
+        nonReentrant
     {
         for (uint256 i = 0; i < _userAddresses.length; i++) {
-            updateUser(_poolId, _userAddresses[i]);
+            _updateUser(_poolId, _userAddresses[i]);
         }
     }
 
-    function update(uint256 _poolId) public {
-        updateUser(_poolId, msg.sender);
+    function update(uint256 _poolId) external nonReentrant {
+        _updateUser(_poolId, msg.sender);
     }
 
-    function updateUser(uint256 _poolId, address _userAddress)
-        public
+    function _updateUser(uint256 _poolId, address _userAddress)
+        private
         validatePoolById(_poolId)
     {
+        require(
+            _userAddress != address(0),
+            "MADworld: _userAddress can not be zero address"
+        );
         Pool storage poolInfo = pools[_poolId];
         AdditionalPoolInfo storage additionalPoolInfo = additionalPoolInfos[
             _poolId
@@ -216,6 +231,21 @@ contract NftStaking is IERC721Receiver, AccessControlUpgradeable, Signature {
             "MADworld: invalid end join time"
         );
 
+        require(
+            address(_nft) != address(0),
+            "MADworld: _nft can not be zero address"
+        );
+
+        require(
+            address(_stakingToken) != address(0),
+            "MADworld: _stakingToken can not be zero address"
+        );
+
+        require(
+            address(_rewardToken) != address(0),
+            "MADworld: _rewardToken can not be zero address"
+        );
+
         Pool storage newPool = pools[poolLength++];
         AdditionalPoolInfo storage addidtionalNewPoolInfo = additionalPoolInfos[
             poolLength - 1
@@ -241,21 +271,20 @@ contract NftStaking is IERC721Receiver, AccessControlUpgradeable, Signature {
             newPool.startJoinTime = _startJoinTime;
             newPool.endJoinTime = _endJoinTime;
         }
-        setApyStruct(poolLength - 1, listApy);
+        _setApyStruct(poolLength - 1, listApy);
 
         emit AddedPool(poolLength - 1, _name);
     }
 
-    function updatePool(
-        uint256 _poolId,
-        string memory _name,
-        uint256 _totalPoolSize
-    ) external onlyRole(ADMIN) validatePoolById(_poolId) {
+    function updatePool(uint256 _poolId, string memory _name)
+        external
+        onlyRole(ADMIN)
+        validatePoolById(_poolId)
+    {
         Pool storage pool = pools[_poolId];
         pool.name = _name;
-        pool.totalPoolSize = _totalPoolSize;
 
-        emit UpdatedPool(_poolId, _name, _totalPoolSize);
+        emit UpdatedPool(_poolId, _name);
     }
 
     function getReward(uint256 _poolId, address _userAddress)
@@ -288,6 +317,7 @@ contract NftStaking is IERC721Receiver, AccessControlUpgradeable, Signature {
 
     function stakeCards(uint256 _poolId, StakeCardPayload memory _payload)
         external
+        nonReentrant
         validatePoolById(_poolId)
         updateState(_poolId, msg.sender)
     {
@@ -394,6 +424,7 @@ contract NftStaking is IERC721Receiver, AccessControlUpgradeable, Signature {
     // solhint-disable-next-line
     function withdraw(uint256 _poolId, uint256[] calldata _ids)
         external
+        nonReentrant
         validatePoolById(_poolId)
         updateState(_poolId, msg.sender)
     {
@@ -481,8 +512,6 @@ contract NftStaking is IERC721Receiver, AccessControlUpgradeable, Signature {
             );
         }
 
-        poolInfo.stakingToken.safeTransfer(msg.sender, totalPrice - _fee);
-
         uint256[] memory _higherTierCardsStaked = additionalPoolInfo
             .higherTierCardsStaked[msg.sender];
         uint256[] memory _lowerTierCardsStaked = additionalPoolInfo
@@ -507,18 +536,25 @@ contract NftStaking is IERC721Receiver, AccessControlUpgradeable, Signature {
             }
         }
 
+        uint256 balance = poolInfo.stakingToken.balanceOf(address(this));
+
+        require(
+            balance >= totalPrice - _fee,
+            "MADworld: contract issufficient balance"
+        );
+
+        poolInfo.stakingToken.safeTransfer(msg.sender, totalPrice - _fee);
+
         emit Withdrawn(msg.sender, _poolId, _ids, _prices, totalPrice, _fee);
     }
 
-    function setSigner(address _signer)
-        external
-        override
-        onlyRole(ADMIN)
-    {
+    function setSigner(address _signer) external override onlyRole(ADMIN) {
         signer = _signer;
+
+        emit SetSigner(_signer);
     }
 
-    function setApyStruct(uint256 _poolId, ApyStruct[] memory listApy)
+    function _setApyStruct(uint256 _poolId, ApyStruct[] memory listApy)
         private
         validatePoolById(_poolId)
         onlyRole(ADMIN)
@@ -535,6 +571,8 @@ contract NftStaking is IERC721Receiver, AccessControlUpgradeable, Signature {
                 ApyStruct({ amount: listApy[i].amount, apy: listApy[i].apy })
             );
         }
+
+        emit SetApyStruct(poolInfo.apyStruct);
     }
 
     function getApyByStake(uint256 _poolId, uint256 _amount)

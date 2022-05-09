@@ -34,7 +34,7 @@ describe("madworld testing !!!", () => {
     { amount: toWei("80000"), apy: toWei("0.13") },
     { amount: toWei("100000"), apy: toWei("0.145") },
     { amount: toWei("120000"), apy: toWei("0.16") },
-    { amount: toWei("140000"), apy: toWei("0.175") }
+    { amount: toWei("140000"), apy: toWei("0.175") },
   ];
 
   before("load", async () => {
@@ -44,18 +44,18 @@ describe("madworld testing !!!", () => {
   });
 
   beforeEach(async () => {
-    token = (await deployContract(
+    token = ((await deployContract(
       owner as any,
       ERC20,
-    )) as unknown as MockERC20;
+    )) as unknown) as MockERC20;
 
-    nft = (await deployContract(
+    nft = ((await deployContract(
       owner as any,
       ERC721,
-    )) as unknown as MockERC721;
+    )) as unknown) as MockERC721;
 
     await token.mint(owner.address, toWei("1000000000000000"));
-    madworld = (await waffle.deployContract(owner as unknown as Signer, {
+    madworld = (await waffle.deployContract((owner as unknown) as Signer, {
       bytecode: NFTSTAKING_BYTECODE,
       abi: NFTSTAKING_ABI,
     })) as NftStaking;
@@ -74,11 +74,11 @@ describe("madworld testing !!!", () => {
       .connect(user)
       .approve(madworld.address, utils.parseEther("1000000000000"));
     await madworld.__Madworld_init();
-    
-    await madworld.connect(owner).grantRole(keccak256(utils.toUtf8Bytes("ADMIN")), wallets[3].address);
-    await madworld.connect(wallets[3]).setSigner(signer.address);
 
-    
+    await madworld
+      .connect(owner)
+      .grantRole(keccak256(utils.toUtf8Bytes("ADMIN")), wallets[3].address);
+    await madworld.connect(wallets[3]).setSigner(signer.address);
 
     await madworld
       .connect(owner)
@@ -119,7 +119,7 @@ describe("madworld testing !!!", () => {
           Math.round(Date.now() / 1000),
           Math.round(Date.now() / 1000) + 3.154e7,
         );
-    })
+    });
 
     it("add pool invalid join time", async () => {
       await expect(
@@ -136,7 +136,7 @@ describe("madworld testing !!!", () => {
             10,
             Math.round(Date.now() / 1000) + 3.154e7,
             Math.round(Date.now() / 1000),
-          )
+          ),
       ).to.revertedWith("MADworld: invalid end join time");
     });
 
@@ -173,19 +173,28 @@ describe("madworld testing !!!", () => {
       expect(res._roiMin).to.equal(toWei("0"));
     });
     it("get pool data by user address", async () => {
-
       const message = ethers.utils.solidityKeccak256(
-        ["uint256", "address", "address", "uint256[]", "uint256[]", "uint256[]"],
+        [
+          "uint256",
+          "address",
+          "address",
+          "uint256[]",
+          "uint256[]",
+          "uint256[]",
+        ],
         [
           1,
           user.address,
           nft.address,
           [1, 2, 14, 15],
           [toWei("40"), toWei("40"), toWei("20000"), toWei("60000")],
-          [0, 0, 1, 1]
-        ]
+          [0, 0, 1, 1],
+        ],
       );
-      const sig = new web3().eth.accounts.sign(message, signer._signingKey().privateKey).signature;
+      const sig = new web3().eth.accounts.sign(
+        message,
+        signer._signingKey().privateKey,
+      ).signature;
       const StakeCardPayload = {
         _nftAddress: nft.address,
         _user: user.address,
@@ -202,22 +211,31 @@ describe("madworld testing !!!", () => {
       expect(res._totalStaked).to.equal(toWei("80080"));
       expect(res._remaining).to.equal(toWei("99999919920"));
       expect(res._poolSize).to.equal(toWei("100000000000"));
-
     });
 
     it("get pool data", async () => {
       const message = ethers.utils.solidityKeccak256(
-        ["uint256", "address", "address", "uint256[]", "uint256[]", "uint256[]"],
+        [
+          "uint256",
+          "address",
+          "address",
+          "uint256[]",
+          "uint256[]",
+          "uint256[]",
+        ],
         [
           1,
           user.address,
           nft.address,
           [1, 2, 14, 15],
           [toWei("40"), toWei("40"), toWei("20000"), toWei("60000")],
-          [0, 0, 1, 1]
-        ]
+          [0, 0, 1, 1],
+        ],
       );
-      const sig = new web3().eth.accounts.sign(message, signer._signingKey().privateKey).signature;
+      const sig = new web3().eth.accounts.sign(
+        message,
+        signer._signingKey().privateKey,
+      ).signature;
       const StakeCardPayload = {
         _nftAddress: nft.address,
         _user: user.address,
@@ -234,7 +252,7 @@ describe("madworld testing !!!", () => {
     });
 
     it("update pool info", async () => {
-      const res1 = await madworld.updatePool(0, "name update", toWei("100"));
+      const res1 = await madworld.updatePool(0, "name update");
 
       const eventFilter = contract.filters.UpdatedPool();
       const events = await contract.queryFilter(
@@ -243,8 +261,59 @@ describe("madworld testing !!!", () => {
         res1.blockNumber,
       );
       expect(events[0].args?.name).to.equal("name update");
-      expect(events[0].args?.totalPoolSize).to.equal(toWei("100"));
+    });
 
+    it("add pool with invalid token", async () => {
+      await expect(
+        madworld
+          .connect(owner)
+          .addPool(
+            "pool 2",
+            apyStruct,
+            "0x0000000000000000000000000000000000000000",
+            token.address,
+            token.address,
+            toWei("100"),
+            5,
+            10,
+            Math.round(Date.now() / 1000),
+            Math.round(Date.now() / 1000) + 3.154e7,
+          ),
+      ).to.be.revertedWith("MADworld: _nft can not be zero address");
+
+      await expect(
+        madworld
+          .connect(owner)
+          .addPool(
+            "pool 2",
+            apyStruct,
+            nft.address,
+            "0x0000000000000000000000000000000000000000",
+            token.address,
+            toWei("100"),
+            5,
+            10,
+            Math.round(Date.now() / 1000),
+            Math.round(Date.now() / 1000) + 3.154e7,
+          ),
+      ).to.be.revertedWith("MADworld: _stakingToken can not be zero address");
+
+      await expect(
+        madworld
+          .connect(owner)
+          .addPool(
+            "pool 2",
+            apyStruct,
+            nft.address,
+            token.address,
+            "0x0000000000000000000000000000000000000000",
+            toWei("100"),
+            5,
+            10,
+            Math.round(Date.now() / 1000),
+            Math.round(Date.now() / 1000) + 3.154e7,
+          ),
+      ).to.be.revertedWith("MADworld: _rewardToken can not be zero address");
     });
 
     it("addPool with role Admin", async () => {
@@ -285,7 +354,14 @@ describe("madworld testing !!!", () => {
           Math.round(Date.now() / 1000) + 3.154e7,
         );
 
+      const eventFilter2 = contract.filters.SetApyStruct();
       const eventFilter = contract.filters.AddedPool();
+
+      const events2 = await contract.queryFilter(
+        eventFilter2,
+        res1.blockNumber,
+        res1.blockNumber,
+      );
       const events = await contract.queryFilter(
         eventFilter,
         res1.blockNumber,
@@ -300,17 +376,27 @@ describe("madworld testing !!!", () => {
   describe("stake card", () => {
     it("stake example", async () => {
       const message = ethers.utils.solidityKeccak256(
-        ["uint256", "address", "address", "uint256[]", "uint256[]", "uint256[]"],
+        [
+          "uint256",
+          "address",
+          "address",
+          "uint256[]",
+          "uint256[]",
+          "uint256[]",
+        ],
         [
           0,
           user.address,
           nft.address,
           [1, 2, 13],
           [toWei("40"), toWei("40"), toWei("20000")],
-          [0, 0, 1]
-        ]
+          [0, 0, 1],
+        ],
       );
-      const sig = new web3().eth.accounts.sign(message, signer._signingKey().privateKey).signature;
+      const sig = new web3().eth.accounts.sign(
+        message,
+        signer._signingKey().privateKey,
+      ).signature;
       const StakeCardPayload = {
         _nftAddress: nft.address,
         _user: user.address,
@@ -335,17 +421,20 @@ describe("madworld testing !!!", () => {
 
     it("stake less than minimum", async () => {
       const message = ethers.utils.solidityKeccak256(
-        ["uint256", "address", "address", "uint256[]", "uint256[]", "uint256[]"],
         [
-          0,
-          user.address,
-          nft.address,
-          [1],
-          [toWei("40")],
-          [0]
-        ]
+          "uint256",
+          "address",
+          "address",
+          "uint256[]",
+          "uint256[]",
+          "uint256[]",
+        ],
+        [0, user.address, nft.address, [1], [toWei("40")], [0]],
       );
-      const sig = new web3().eth.accounts.sign(message, signer._signingKey().privateKey).signature;
+      const sig = new web3().eth.accounts.sign(
+        message,
+        signer._signingKey().privateKey,
+      ).signature;
       const StakeCardPayload = {
         _nftAddress: nft.address,
         _user: user.address,
@@ -375,17 +464,27 @@ describe("madworld testing !!!", () => {
           Math.round(Date.now() / 1000) + 3.154e7,
         );
       const message = ethers.utils.solidityKeccak256(
-        ["uint256", "address", "address", "uint256[]", "uint256[]", "uint256[]"],
+        [
+          "uint256",
+          "address",
+          "address",
+          "uint256[]",
+          "uint256[]",
+          "uint256[]",
+        ],
         [
           1,
           user.address,
           nft.address,
           [1, 2, 13],
           [toWei("40"), toWei("40"), toWei("20000")],
-          [0, 0, 1]
-        ]
+          [0, 0, 1],
+        ],
       );
-      const sig = new web3().eth.accounts.sign(message, signer._signingKey().privateKey).signature;
+      const sig = new web3().eth.accounts.sign(
+        message,
+        signer._signingKey().privateKey,
+      ).signature;
       const StakeCardPayload = {
         _nftAddress: nft.address,
         _user: user.address,
@@ -395,25 +494,33 @@ describe("madworld testing !!!", () => {
         _signature: sig,
       };
       await expect(
-        madworld
-          .connect(user)
-          .stakeCards(1, StakeCardPayload),
+        madworld.connect(user).stakeCards(1, StakeCardPayload),
       ).to.be.revertedWith("exceed pool limit");
     });
 
     it("stake invalid signature", async () => {
       const message = ethers.utils.solidityKeccak256(
-        ["uint256", "address", "address", "uint256[]", "uint256[]", "uint256[]"],
+        [
+          "uint256",
+          "address",
+          "address",
+          "uint256[]",
+          "uint256[]",
+          "uint256[]",
+        ],
         [
           1,
           user.address,
           nft.address,
           [1, 2, 13],
           [toWei("40"), toWei("40"), toWei("20000")],
-          [0, 0, 1]
-        ]
+          [0, 0, 1],
+        ],
       );
-      const sig = new web3().eth.accounts.sign(message, signer._signingKey().privateKey).signature;
+      const sig = new web3().eth.accounts.sign(
+        message,
+        signer._signingKey().privateKey,
+      ).signature;
       const StakeCardPayload = {
         _nftAddress: nft.address,
         _user: user.address,
@@ -429,17 +536,27 @@ describe("madworld testing !!!", () => {
 
     it("stake invalid user", async () => {
       const message = ethers.utils.solidityKeccak256(
-        ["uint256", "address", "address", "uint256[]", "uint256[]", "uint256[]"],
+        [
+          "uint256",
+          "address",
+          "address",
+          "uint256[]",
+          "uint256[]",
+          "uint256[]",
+        ],
         [
           0,
           wallets[2].address,
           nft.address,
           [1, 2, 13],
           [toWei("40"), toWei("40"), toWei("20000")],
-          [0, 0, 1]
-        ]
+          [0, 0, 1],
+        ],
       );
-      const sig = new web3().eth.accounts.sign(message, signer._signingKey().privateKey).signature;
+      const sig = new web3().eth.accounts.sign(
+        message,
+        signer._signingKey().privateKey,
+      ).signature;
       const StakeCardPayload = {
         _nftAddress: nft.address,
         _user: wallets[2].address,
@@ -455,17 +572,27 @@ describe("madworld testing !!!", () => {
 
     it("stake invalid user", async () => {
       const message = ethers.utils.solidityKeccak256(
-        ["uint256", "address", "address", "uint256[]", "uint256[]", "uint256[]"],
+        [
+          "uint256",
+          "address",
+          "address",
+          "uint256[]",
+          "uint256[]",
+          "uint256[]",
+        ],
         [
           0,
           user.address,
           nft.address,
           [1, 2, 13],
           [toWei("40"), toWei("40"), toWei("20000")],
-          [0, 0, 2]
-        ]
+          [0, 0, 2],
+        ],
       );
-      const sig = new web3().eth.accounts.sign(message, signer._signingKey().privateKey).signature;
+      const sig = new web3().eth.accounts.sign(
+        message,
+        signer._signingKey().privateKey,
+      ).signature;
       const StakeCardPayload = {
         _nftAddress: nft.address,
         _user: user.address,
@@ -481,17 +608,27 @@ describe("madworld testing !!!", () => {
 
     it("stake invalid start time - end time", async () => {
       const message = ethers.utils.solidityKeccak256(
-        ["uint256", "address", "address", "uint256[]", "uint256[]", "uint256[]"],
+        [
+          "uint256",
+          "address",
+          "address",
+          "uint256[]",
+          "uint256[]",
+          "uint256[]",
+        ],
         [
           1,
           user.address,
           nft.address,
           [1, 2, 13],
           [toWei("40"), toWei("40"), toWei("20000")],
-          [0, 0, 1]
-        ]
+          [0, 0, 1],
+        ],
       );
-      const sig = new web3().eth.accounts.sign(message, signer._signingKey().privateKey).signature;
+      const sig = new web3().eth.accounts.sign(
+        message,
+        signer._signingKey().privateKey,
+      ).signature;
       const StakeCardPayload = {
         _nftAddress: nft.address,
         _user: user.address,
@@ -537,27 +674,52 @@ describe("madworld testing !!!", () => {
       await expect(
         madworld.connect(user).stakeCards(2, StakeCardPayload),
       ).to.be.revertedWith("MADworld: pool is already closed");
-
     });
 
     it("stake more than limit higher tier card", async () => {
       const message = ethers.utils.solidityKeccak256(
-        ["uint256", "address", "address", "uint256[]", "uint256[]", "uint256[]"],
+        [
+          "uint256",
+          "address",
+          "address",
+          "uint256[]",
+          "uint256[]",
+          "uint256[]",
+        ],
         [
           0,
           user.address,
           nft.address,
           [1, 2, 3, 4, 5, 6, 7],
-          [toWei("20000"), toWei("20000"), toWei("20000"), toWei("20000"), toWei("20000"), toWei("20000"), toWei("20000")],
-          [1, 1, 1, 1, 1, 1, 1]
-        ]
+          [
+            toWei("20000"),
+            toWei("20000"),
+            toWei("20000"),
+            toWei("20000"),
+            toWei("20000"),
+            toWei("20000"),
+            toWei("20000"),
+          ],
+          [1, 1, 1, 1, 1, 1, 1],
+        ],
       );
-      const sig = new web3().eth.accounts.sign(message, signer._signingKey().privateKey).signature;
+      const sig = new web3().eth.accounts.sign(
+        message,
+        signer._signingKey().privateKey,
+      ).signature;
       const StakeCardPayload = {
         _nftAddress: nft.address,
         _user: user.address,
         _ids: [1, 2, 3, 4, 5, 6, 7],
-        _prices: [toWei("20000"), toWei("20000"), toWei("20000"), toWei("20000"), toWei("20000"), toWei("20000"), toWei("20000")],
+        _prices: [
+          toWei("20000"),
+          toWei("20000"),
+          toWei("20000"),
+          toWei("20000"),
+          toWei("20000"),
+          toWei("20000"),
+          toWei("20000"),
+        ],
         _tiers: [1, 1, 1, 1, 1, 1, 1], // 0 - lower, 1 - higher
         _signature: sig,
       };
@@ -568,22 +730,56 @@ describe("madworld testing !!!", () => {
 
     it("stake more than limit lower tier card", async () => {
       const message = ethers.utils.solidityKeccak256(
-        ["uint256", "address", "address", "uint256[]", "uint256[]", "uint256[]"],
+        [
+          "uint256",
+          "address",
+          "address",
+          "uint256[]",
+          "uint256[]",
+          "uint256[]",
+        ],
         [
           0,
           user.address,
           nft.address,
           [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-          [toWei("40"), toWei("40"), toWei("40"), toWei("40"), toWei("40"), toWei("40"), toWei("40"), toWei("40"), toWei("40"), toWei("40"), toWei("40")],
-          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        ]
+          [
+            toWei("40"),
+            toWei("40"),
+            toWei("40"),
+            toWei("40"),
+            toWei("40"),
+            toWei("40"),
+            toWei("40"),
+            toWei("40"),
+            toWei("40"),
+            toWei("40"),
+            toWei("40"),
+          ],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        ],
       );
-      const sig = new web3().eth.accounts.sign(message, signer._signingKey().privateKey).signature;
+      const sig = new web3().eth.accounts.sign(
+        message,
+        signer._signingKey().privateKey,
+      ).signature;
       const StakeCardPayload = {
         _nftAddress: nft.address,
         _user: user.address,
         _ids: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-        _prices: [toWei("40"), toWei("40"), toWei("40"), toWei("40"), toWei("40"), toWei("40"), toWei("40"), toWei("40"), toWei("40"), toWei("40"), toWei("40")],
+        _prices: [
+          toWei("40"),
+          toWei("40"),
+          toWei("40"),
+          toWei("40"),
+          toWei("40"),
+          toWei("40"),
+          toWei("40"),
+          toWei("40"),
+          toWei("40"),
+          toWei("40"),
+          toWei("40"),
+        ],
         _tiers: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], // 0 - lower, 1 - higher
         _signature: sig,
       };
@@ -597,17 +793,27 @@ describe("madworld testing !!!", () => {
         .connect(user)
         .transfer(wallets[3].address, utils.parseEther("1000000000000"));
       const message = ethers.utils.solidityKeccak256(
-        ["uint256", "address", "address", "uint256[]", "uint256[]", "uint256[]"],
+        [
+          "uint256",
+          "address",
+          "address",
+          "uint256[]",
+          "uint256[]",
+          "uint256[]",
+        ],
         [
           0,
           user.address,
           nft.address,
           [1, 2],
           [toWei("20000"), toWei("20000")],
-          [0, 1]
-        ]
+          [0, 1],
+        ],
       );
-      const sig = new web3().eth.accounts.sign(message, signer._signingKey().privateKey).signature;
+      const sig = new web3().eth.accounts.sign(
+        message,
+        signer._signingKey().privateKey,
+      ).signature;
       const StakeCardPayload = {
         _nftAddress: nft.address,
         _user: user.address,
@@ -623,22 +829,46 @@ describe("madworld testing !!!", () => {
 
     it("stake with invalid poolId", async () => {
       const message = ethers.utils.solidityKeccak256(
-        ["uint256", "address", "address", "uint256[]", "uint256[]", "uint256[]"],
+        [
+          "uint256",
+          "address",
+          "address",
+          "uint256[]",
+          "uint256[]",
+          "uint256[]",
+        ],
         [
           10,
           user.address,
           nft.address,
           [1, 2, 3, 13, 12, 15],
-          [toWei("40"), toWei("40"), toWei("200"), toWei("20000"), toWei("20000"), toWei("60000")],
-          [0, 0, 0, 1, 1, 1]
-        ]
+          [
+            toWei("40"),
+            toWei("40"),
+            toWei("200"),
+            toWei("20000"),
+            toWei("20000"),
+            toWei("60000"),
+          ],
+          [0, 0, 0, 1, 1, 1],
+        ],
       );
-      const sig = new web3().eth.accounts.sign(message, signer._signingKey().privateKey).signature;
+      const sig = new web3().eth.accounts.sign(
+        message,
+        signer._signingKey().privateKey,
+      ).signature;
       const StakeCardPayload = {
         _nftAddress: nft.address,
         _user: user.address,
         _ids: [1, 2, 3, 13, 12, 15],
-        _prices: [toWei("40"), toWei("40"), toWei("200"), toWei("20000"), toWei("20000"), toWei("60000")],
+        _prices: [
+          toWei("40"),
+          toWei("40"),
+          toWei("200"),
+          toWei("20000"),
+          toWei("20000"),
+          toWei("60000"),
+        ],
         _tiers: [0, 0, 0, 1, 1, 1], // 0 - lower, 1 - higher
         _signature: sig,
       };
@@ -649,22 +879,31 @@ describe("madworld testing !!!", () => {
   });
 
   describe("withdraw", () => {
-
     let StakeCardPayload: any;
 
     beforeEach("stake before withdraw", () => {
       const message = ethers.utils.solidityKeccak256(
-        ["uint256", "address", "address", "uint256[]", "uint256[]", "uint256[]"],
+        [
+          "uint256",
+          "address",
+          "address",
+          "uint256[]",
+          "uint256[]",
+          "uint256[]",
+        ],
         [
           0,
           user.address,
           nft.address,
           [1, 2, 13],
           [toWei("40"), toWei("40"), toWei("20000")],
-          [0, 0, 1]
-        ]
+          [0, 0, 1],
+        ],
       );
-      const sig = new web3().eth.accounts.sign(message, signer._signingKey().privateKey).signature;
+      const sig = new web3().eth.accounts.sign(
+        message,
+        signer._signingKey().privateKey,
+      ).signature;
       StakeCardPayload = {
         _nftAddress: nft.address,
         _user: user.address,
@@ -673,7 +912,7 @@ describe("madworld testing !!!", () => {
         _tiers: [0, 0, 1], // 0 - lower, 1 - higher
         _signature: sig,
       };
-    })
+    });
 
     it("penalty withdraw", async () => {
       await token.transfer(madworld.address, utils.parseEther("1000000000000"));
@@ -686,12 +925,12 @@ describe("madworld testing !!!", () => {
         res.blockNumber,
         res.blockNumber,
       );
-      expect(events2[0].args?.fee.toString()).to.equal(toWei("401.6").toString());
+      expect(events2[0].args?.fee.toString()).to.equal(
+        toWei("401.6").toString(),
+      );
     });
 
     it("withdraw example", async () => {
-      await token.transfer(madworld.address, utils.parseEther("1000000000000"));
-
       await madworld
         .connect(owner)
         .addPool(
@@ -708,27 +947,54 @@ describe("madworld testing !!!", () => {
         );
 
       const message = ethers.utils.solidityKeccak256(
-        ["uint256", "address", "address", "uint256[]", "uint256[]", "uint256[]"],
+        [
+          "uint256",
+          "address",
+          "address",
+          "uint256[]",
+          "uint256[]",
+          "uint256[]",
+        ],
         [
           1,
           user.address,
           nft.address,
           [1, 2, 3, 13, 12, 15],
-          [toWei("40"), toWei("40"), toWei("200"), toWei("20000"), toWei("20000"), toWei("60000")],
-          [0, 0, 0, 1, 1, 1]
-        ]
+          [
+            toWei("40"),
+            toWei("40"),
+            toWei("200"),
+            toWei("20000"),
+            toWei("20000"),
+            toWei("60000"),
+          ],
+          [0, 0, 0, 1, 1, 1],
+        ],
       );
-      const sig = new web3().eth.accounts.sign(message, signer._signingKey().privateKey).signature;
+      const sig = new web3().eth.accounts.sign(
+        message,
+        signer._signingKey().privateKey,
+      ).signature;
       const StakeCardPayload = {
         _nftAddress: nft.address,
         _user: user.address,
         _ids: [1, 2, 3, 13, 12, 15],
-        _prices: [toWei("40"), toWei("40"), toWei("200"), toWei("20000"), toWei("20000"), toWei("60000")],
+        _prices: [
+          toWei("40"),
+          toWei("40"),
+          toWei("200"),
+          toWei("20000"),
+          toWei("20000"),
+          toWei("60000"),
+        ],
         _tiers: [0, 0, 0, 1, 1, 1], // 0 - lower, 1 - higher
         _signature: sig,
       };
       await madworld.connect(user).stakeCards(1, StakeCardPayload);
-      await increase(BigNumber.from("8640000"))
+      await increase(BigNumber.from("8640000"));
+      await expect(
+        madworld.connect(user).withdraw(1, [1, 2, 3, 13, 12, 15]),
+      ).to.be.revertedWith("MADworld: contract issufficient balance");
       const res = await madworld.connect(user).withdraw(1, [1, 2, 13, 15]);
       const eventFilter2 = contract.filters.Withdrawn();
       const events2 = await contract.queryFilter(
@@ -776,17 +1042,27 @@ describe("madworld testing !!!", () => {
           Math.round(Date.now() / 1000) + 3.154e7,
         );
       const message = ethers.utils.solidityKeccak256(
-        ["uint256", "address", "address", "uint256[]", "uint256[]", "uint256[]"],
+        [
+          "uint256",
+          "address",
+          "address",
+          "uint256[]",
+          "uint256[]",
+          "uint256[]",
+        ],
         [
           1,
           user.address,
           nft.address,
           [1, 2, 14, 15],
           [toWei("40"), toWei("40"), toWei("20000"), toWei("60000")],
-          [0, 0, 1, 1]
-        ]
+          [0, 0, 1, 1],
+        ],
       );
-      const sig = new web3().eth.accounts.sign(message, signer._signingKey().privateKey).signature;
+      const sig = new web3().eth.accounts.sign(
+        message,
+        signer._signingKey().privateKey,
+      ).signature;
       const StakeCardPayload = {
         _nftAddress: nft.address,
         _user: user.address,
@@ -799,32 +1075,45 @@ describe("madworld testing !!!", () => {
       await increase(BigNumber.from("5000"));
 
       const res = await madworld.getReward(1, user.address);
-      expect(res.toString().slice(0, -18)).to.equal("63483")
+      expect(res.toString().slice(0, -18)).to.equal("63483");
 
       await madworld.updateUsers(1, [user.address]);
+      await expect(
+        madworld.updateUsers(1, ["0x0000000000000000000000000000000000000000"]),
+      ).to.be.revertedWith("MADworld: _userAddress can not be zero address");
+
       await madworld.connect(user).update(1);
 
       const res1 = await madworld.getReward(1, user.address);
-      expect(res1.toString().slice(0, -18)).to.equal("")
+      expect(res1.toString().slice(0, -18)).to.equal("");
 
       await increase(BigNumber.from("5000"));
       const res2 = await madworld.getReward(1, user.address);
-      expect(res2.toString().slice(0, -18)).to.equal("63483")
-
-    })
+      expect(res2.toString().slice(0, -18)).to.equal("63483");
+    });
     it("get user cards staked", async () => {
       const message = ethers.utils.solidityKeccak256(
-        ["uint256", "address", "address", "uint256[]", "uint256[]", "uint256[]"],
+        [
+          "uint256",
+          "address",
+          "address",
+          "uint256[]",
+          "uint256[]",
+          "uint256[]",
+        ],
         [
           0,
           user.address,
           nft.address,
           [1, 2, 14, 15],
           [toWei("40"), toWei("40"), toWei("20000"), toWei("60000")],
-          [0, 0, 1, 1]
-        ]
+          [0, 0, 1, 1],
+        ],
       );
-      const sig = new web3().eth.accounts.sign(message, signer._signingKey().privateKey).signature;
+      const sig = new web3().eth.accounts.sign(
+        message,
+        signer._signingKey().privateKey,
+      ).signature;
       const StakeCardPayload = {
         _nftAddress: nft.address,
         _user: user.address,
@@ -867,7 +1156,7 @@ describe("madworld testing !!!", () => {
             10,
             Math.round(Date.now() / 1000),
             Math.round(Date.now() / 1000) + 3.154e7,
-          )
+          ),
       ).to.revertedWith("MADworld: invalid APY amount");
       await expect(
         madworld
@@ -883,7 +1172,7 @@ describe("madworld testing !!!", () => {
             10,
             Math.round(Date.now() / 1000),
             Math.round(Date.now() / 1000) + 3.154e7,
-          )
+          ),
       ).to.revertedWith("MADworld: invalid APY value");
     });
   });
